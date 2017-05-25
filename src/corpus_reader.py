@@ -62,7 +62,7 @@ class CorpusReader:
         training example minus the extension.
         """
 
-        feat_fn_batch, target_fn_batch = zip(*fn_batch)
+        feat_fn_batch, target_fn_batch, transl_fn_batch = zip(*fn_batch)
 
         batch_inputs, batch_inputs_lens = utils.load_batch_x(feat_fn_batch,
                                                              flatten=True)
@@ -75,15 +75,16 @@ class CorpusReader:
 
         return batch_inputs, batch_inputs_lens, batch_targets
 
-    def train_batch_gen(self):
+    def train_batch_gen(self, rand=True):
         """ Returns a generator that outputs batches in the training data."""
 
         # Create batches of batch_size and shuffle them.
         fn_batches = [self.train_fns[i:i+self.batch_size]
-                          for i in range(0, len(self.train_fns),
-                                         self.batch_size)]
+                      for i in range(0, len(self.train_fns), self.batch_size)]
 
-        if self.rand:
+        print(fn_batches[0])
+
+        if rand:
             random.shuffle(fn_batches)
 
         for fn_batch in fn_batches:

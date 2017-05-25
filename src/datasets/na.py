@@ -409,30 +409,41 @@ class Corpus(corpus.AbstractCorpus):
     """ Class to interface with the Na corpus. """
 
     TRAIN_VALID_TEST_RATIOS = [.8,.1,.1]
+    input_dir = os.path.join(TGT_DIR, "wav")
+    utter_names = [os.path.splitext(fn)[0]
+                   for fn in os.listdir(input_dir)
+                   if fn.endswith(".wav")]
+    untranscribed_dir = os.path.join(TGT_DIR, "untranscribed_wav")
+    untranscribed_prefixes = [os.path.join(untranscribed_dir, fn.strip(".wav"))
+                              for fn in os.listdir(untranscribed_dir)
+                              if fn.endswith(".wav")]
 
-    def __init__(self, feat_type, target_type, tones=False, max_samples=1000):
+    def __init__(self, feat_type="log_mel_filterbank", target_type="phn",
+                 tones=False, max_samples=1000):
         super().__init__(feat_type, target_type)
 
+        # Address tones
         self.tones = tones
-
         if tones:
             self.phonemes = PHONES.union(set(TONES))
         else:
             self.phonemes = PHONES
 
+        # Address target type
         if target_type != "phn":
             raise Exception("target_type %s not implemented." % target_type)
 
-        input_dir = os.path.join(TGT_DIR, "wav")
-        prefixes = [os.path.join(input_dir, fn.strip(".wav"))
-                    for fn in os.listdir(input_dir) if fn.endswith(".wav")]
-        untranscribed_dir = os.path.join(TGT_DIR, "untranscribed_wav")
-        self.untranscribed_prefixes = [os.path.join(
-            untranscribed_dir, fn.strip(".wav"))
-            for fn in os.listdir(untranscribed_dir) if fn.endswith(".wav")]
-
+        # Address max_samples
         if max_samples:
-            prefixes = self.sort_and_filter_by_size(prefixes, max_samples)
+            # TODO Change sort_and_filter_by_size to accept utter_names. Note
+            # that this move would break other datasets interfaces.
+            prefixes = [feats_path(utter_name)
+                        for utter_name in self.utter_names]
+            kept_prefixes = self.sort_and_filter_by_size(prefixes, max_samples)
+            self.utter_names = [os.path.basename(prefix)
+                                for prefix in kept_prefixes]
+
+        print(self.utter_names)
 
         # To ensure we always get the same train/valid/test split, but
         # to shuffle it nonetheless.
@@ -454,6 +465,11 @@ class Corpus(corpus.AbstractCorpus):
         self.INDEX_TO_PHONEME = {index: phn for index, phn in enumerate(
                                  ["pad"] + sorted(list(self.phonemes)))}
         self.vocab_size = len(self.phonemes)
+
+    def feats_path(utter_name):
+        """ Given a prefix, generates the path to the input features."""
+        return os.path.join(self.input_dir,
+                            "%s.%s.npy" % (utter_name, feat_type))
 
     def prepare(self):
         """ Preprocessing the Na data."""

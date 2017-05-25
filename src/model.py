@@ -65,9 +65,8 @@ class Model:
                     print(fn + ": ", file=hyps_f)
                     print(" ".join(hyp), file=hyps_f)
 
-    def output_lattices(self, batch, restore_model_path=None):
-        """ Outputs the logits from the model, given an input batch, so that
-            lattices can ultimately be extracted."""
+    def output_lattices(self, batch, prefixes, restore_model_path=None):
+        """ Generates lattices given an input batch. """
 
         saver = tf.train.Saver()
         with tf.Session() as sess:
@@ -92,7 +91,7 @@ class Model:
                 os.makedirs(out_dir)
             for i, example in enumerate(log_softmax):
                 length = batch_x_lens[i]
-                np.save(os.path.join(out_dir, "utterance_%d_log_softmax" % i),
+                np.save(os.path.join(out_dir, "%s.log_softmax" % prefixes[i]),
                         example[:length])
 
         ### Create the lattices.###
@@ -112,12 +111,13 @@ class Model:
             length = batch_x_lens[i]
             lattice.logsoftmax2confusion(log_softmax_example[:length],
                                          index_to_token,
-                                         os.path.join(out_dir, "utterance_%d" % i),
+                                         os.path.join(out_dir, "%s" % prefixes[i]),
                                          beam_size=4)
-            lattice.compile_fst(os.path.join(out_dir, "utterance_%d.confusion" % i),
-                                syms_fn)
+            lattice.compile_fst(os.path.join(out_dir,
+                                             "%s.confusion" % prefixes[i]),
+                                             syms_fn)
 
-            prefix = os.path.join(out_dir, "utterance_%d" % i)
+            prefix = os.path.join(out_dir, "%s" % prefixes[i])
 
             run_args = [os.path.join(OPENFST_PATH, "fstarcsort"),
                         prefix + ".confusion.bin",
@@ -137,12 +137,6 @@ class Model:
                         "--project_output",
                         prefix + ".collapsed.bin", prefix + ".projection.bin"]
             subprocess.run(run_args)
-
-            # Push weights
-#            run_args = [os.path.join(OPENFST_PATH, "fstpush"),
-#                        "--push_weights",
-#                        prefix + ".projection.bin", prefix + ".pushed.bin"]
-#            subprocess.run(run_args)
 
             # Remove epsilons
             run_args = [os.path.join(OPENFST_PATH, "fstrmepsilon"),

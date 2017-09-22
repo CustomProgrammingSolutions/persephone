@@ -13,6 +13,8 @@ import datasets.chatino
 import datasets.babel
 from corpus_reader import CorpusReader
 
+import results
+
 EXP_DIR = config.EXP_DIR
 
 def get_exp_dir_num():
@@ -31,23 +33,28 @@ def prep_exp_dir():
     code_dir = os.path.join(EXP_DIR, str(exp_num), "code")
     shutil.copytree(os.getcwd(), code_dir)
 
+    print("exp_num: %d" % exp_num)
+
     return os.path.join(EXP_DIR, str(exp_num))
 
 def multi_train():
-    train("fbank_and_pitch", "phonemes")
-    train("fbank_and_pitch", "phonemes_and_tones")
-    train("fbank_and_pitch", "tones")
+    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=2, hidden_size=100)
+    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=2, hidden_size=250)
+    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=2, hidden_size=400)
+    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=3, hidden_size=100)
+    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=3, hidden_size=250)
+    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=3, hidden_size=400)
+    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=4, hidden_size=100)
+    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=4, hidden_size=250)
+    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=4, hidden_size=400)
 
-def train(feat_type, label_type):
+def train(language, feat_type, label_type, num_layers=3, hidden_size=250):
     """ Run an experiment. """
 
     #feat_type = "fbank"
     #label_type = "tones"
-    language = "chatino"
-    num_layers = 3
-    hidden_size = 250
-    num_trains = [128,256,512,1024,2048]
-    #num_trains = [128]
+    #num_trains = [128,256,512,1024,2048]
+    num_trains = [2048]
 
     if language == "chatino":
         corpus = datasets.chatino.Corpus(feat_type, label_type)
@@ -76,6 +83,14 @@ def train(feat_type, label_type):
     print("num_layers: %d" % num_layers)
     print("hidden_size: %d" % hidden_size)
     print("Exp dirs:", exp_dirs)
+    if language == "chatino":
+        results.format(exp_dirs,
+                       phones=datasets.chatino.PHONEMES,
+                       tones=datasets.chatino.TONES)
+    elif language == "na":
+        results.format(exp_dirs,
+                       phones=datasets.na.PHONES,
+                       tones=datasets.na.TONES)
 
 def train_babel():
     # Prepares a new experiment dir for all logging.

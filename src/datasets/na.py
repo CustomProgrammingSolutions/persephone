@@ -289,10 +289,10 @@ def wordlists_and_texts_fns():
             raise Exception("Unexpected type of transcription: %s" % root.tag)
     return wordlists, texts
 
-def extract_features():
+def extract_features(feat_type="log_mel_filterbank"):
     """ Extract features from wave files in a given path. """
 
-    feat_extract.from_dir(os.path.join(TGT_DIR, "wav"), feat_type="log_mel_filterbank")
+    feat_extract.from_dir(os.path.join(TGT_DIR, "wav"), feat_type)
 
 def get_target_prefix(prefix):
     """ Given a prefix of the form /some/path/here/wav/prefix, returns the
@@ -473,6 +473,8 @@ class Corpus(corpus.AbstractCorpus):
             # We assume we are predicting tones given phonemes.
             assert target_type == "tones"
             prepare_phoneme_feats(texts_fns)
+        else:
+            feat_extract.from_dir(FEAT_DIR, feat_type)
 
         # TODO prepare_wavs_and_transcripts should be a method of this class.
         #prepare_wavs_and_transcripts(texts_fns, target_type)

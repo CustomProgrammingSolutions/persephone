@@ -39,10 +39,11 @@ def format(exp_paths,
     print("Test PER", round_items(test_pers))
     print("Test TER", round_items(test_ters))
 
-    for item in zip([128,256,512,1024,2048], test_pers):
-        print("(%d, %f)" % item)
-
+    print("TONES")
     for item in zip([128,256,512,1024,2048], test_ters):
+        print("(%d, %f)" % item)
+    print("PHONEMES")
+    for item in zip([128,256,512,1024,2048], test_pers):
         print("(%d, %f)" % item)
 
 def filter_labels(sent, labels):

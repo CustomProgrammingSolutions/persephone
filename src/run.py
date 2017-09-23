@@ -38,18 +38,21 @@ def prep_exp_dir():
     return os.path.join(EXP_DIR, str(exp_num))
 
 def multi_train():
-    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=2, hidden_size=100)
-    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=2, hidden_size=250)
-    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=2, hidden_size=400)
-    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=3, hidden_size=100)
-    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=3, hidden_size=250)
-    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=3, hidden_size=400)
-    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=4, hidden_size=100)
-    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=4, hidden_size=250)
-    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=4, hidden_size=400)
+    #train("na", "phonemes_onehot", "tones", num_layers=2, hidden_size=100)
+    train("na", "fbank", "phonemes", num_layers=2, hidden_size=100)
+    train("na", "fbank", "phonemes", num_layers=2, hidden_size=250)
+    train("na", "fbank", "phonemes", num_layers=2, hidden_size=400)
+    train("na", "fbank", "phonemes", num_layers=3, hidden_size=100)
+    train("na", "fbank", "phonemes", num_layers=3, hidden_size=250)
+    train("na", "fbank", "phonemes", num_layers=3, hidden_size=400)
+    train("na", "fbank", "phonemes", num_layers=4, hidden_size=100)
+    train("na", "fbank", "phonemes", num_layers=4, hidden_size=250)
+    train("na", "fbank", "phonemes", num_layers=4, hidden_size=400)
 
 def train(language, feat_type, label_type, num_layers=3, hidden_size=250):
     """ Run an experiment. """
+
+    fn = "%s_%s_%s_%s_%s" % (language, feat_type, label_type, num_layers, hidden_size)
 
     #feat_type = "fbank"
     #label_type = "tones"
@@ -77,20 +80,23 @@ def train(language, feat_type, label_type, num_layers=3, hidden_size=250):
                                                        else True))
         model.train()
 
-    print("language: %s" % language)
-    print("feat_type: %s" % feat_type)
-    print("label_type: %s" % label_type)
-    print("num_layers: %d" % num_layers)
-    print("hidden_size: %d" % hidden_size)
-    print("Exp dirs:", exp_dirs)
-    if language == "chatino":
-        results.format(exp_dirs,
-                       phones=datasets.chatino.PHONEMES,
-                       tones=datasets.chatino.TONES)
-    elif language == "na":
-        results.format(exp_dirs,
-                       phones=datasets.na.PHONES,
-                       tones=datasets.na.TONES)
+    with open(os.path.join(EXP_DIR, "results", fn), "w") as f:
+        print("language: %s" % language, file=f)
+        print("feat_type: %s" % feat_type, file=f)
+        print("label_type: %s" % label_type, file=f)
+        print("num_layers: %d" % num_layers, file=f)
+        print("hidden_size: %d" % hidden_size, file=f)
+        print("Exp dirs:", exp_dirs, file=f)
+        if language == "chatino":
+            results.format(exp_dirs,
+                           phones=datasets.chatino.PHONEMES,
+                           tones=datasets.chatino.TONES,
+                           file=f)
+        elif language == "na":
+            results.format(exp_dirs,
+                           phones=datasets.na.PHONES,
+                           tones=datasets.na.TONES,
+                           file=f)
 
 def train_babel():
     # Prepares a new experiment dir for all logging.

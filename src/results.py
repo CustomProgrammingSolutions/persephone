@@ -12,7 +12,8 @@ def round_items(floats):
 
 def format(exp_paths,
                    phones=datasets.na.PHONES,
-                   tones=datasets.na.TONES):
+                   tones=datasets.na.TONES,
+                   file=None):
     """ Takes a list of experimental paths such as mam/exp/<number> and outputs
     the results. """
 
@@ -34,17 +35,30 @@ def format(exp_paths,
             training_ler, valid_ler, valid_per = float(sp[4]), float(sp[7]), float(sp[10])
             valid_lers.append(valid_ler)
 
-    print("Valid LER", round_items(valid_lers))
-    print("Test LER", round_items(test_lers))
-    print("Test PER", round_items(test_pers))
-    print("Test TER", round_items(test_ters))
+    if file:
+        print("Valid LER", round_items(valid_lers), file=file)
+        print("Test LER", round_items(test_lers), file=file)
+        print("Test PER", round_items(test_pers), file=file)
+        print("Test TER", round_items(test_ters), file=file)
 
-    print("TONES")
-    for item in zip([128,256,512,1024,2048], test_ters):
-        print("(%d, %f)" % item)
-    print("PHONEMES")
-    for item in zip([128,256,512,1024,2048], test_pers):
-        print("(%d, %f)" % item)
+        print("TONES")
+        for item in zip([128,256,512,1024,2048], test_ters):
+            print("(%d, %f)" % item, file=file)
+        print("PHONEMES")
+        for item in zip([128,256,512,1024,2048], test_pers):
+            print("(%d, %f)" % item, file=file)
+    else:
+        print("Valid LER", round_items(valid_lers))
+        print("Test LER", round_items(test_lers))
+        print("Test PER", round_items(test_pers))
+        print("Test TER", round_items(test_ters))
+
+        print("TONES")
+        for item in zip([128,256,512,1024,2048], test_ters):
+            print("(%d, %f)" % item)
+        print("PHONEMES")
+        for item in zip([128,256,512,1024,2048], test_pers):
+            print("(%d, %f)" % item)
 
 def filter_labels(sent, labels):
     """ Returns only the tokens present in the sentence that are in labels."""
@@ -87,8 +101,7 @@ def filtered_error_rate(hyps_path, refs_path, labels):
 
     return utils.batch_per(hyps, refs)
 
-def error_types(exp_path, labels):
-    """ Stats about the most common types of errors in the test set."""
+def create_align_hist(exp_path, labels):
 
     test_path = os.path.join(exp_path, "test")
     hyps_path = os.path.join(test_path, "hyps")
@@ -107,8 +120,10 @@ def error_types(exp_path, labels):
         alignment = min_edit_distance_align(ref, hyp)
         alignments.append(alignment)
         for arrow in alignment:
-            if arrow[0] != arrow[1]:
-                errors.append(arrow)
+            #if arrow[0] != arrow[1]:
+            #    errors.append(arrow)
+            errors.append(arrow)
+
 
     err_hist = {}
     for error in errors:
@@ -117,6 +132,44 @@ def error_types(exp_path, labels):
         else:
             err_hist[error] = 1
 
+    return err_hist
+
+def error_types(exp_path, labels):
+    """ Stats about the most common types of errors in the test set."""
+
+    # TODO Need to address non-errors
+    #err_hist = create_err_hist(exp_path, labels)
+
     error_list = sorted(err_hist.items(), key=lambda x: x[1], reverse=False)
     for thing in error_list:
         print(thing)
+
+def confusion_matrix(exp_path, labels):
+
+    labels = labels[:]
+    labels.remove("˩˧")
+    labels.remove("˧˩")
+    align_hist = create_align_hist(exp_path, labels)
+    # Don't consider counts for non-errors
+    for key in align_hist.keys():
+        if key[0] == key[1]:
+            align_hist[key] = 0
+    print(align_hist)
+    for l_j in labels[:-1]:
+        print(l_j, end=",")
+    print(labels[-1], end="")
+    print()
+    for l_i in labels:
+        print(l_i, end=",")
+        for l_j in labels[:-1]:
+            key = (l_i, l_j)
+            if key in align_hist:
+                print(align_hist[key], end=",")
+            else:
+                print(0, end=",")
+        key = (l_i, labels[-1])
+        if key in align_hist:
+            print(align_hist[key], end="")
+        else:
+            print(0, end="")
+        print()

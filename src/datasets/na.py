@@ -364,8 +364,16 @@ class Corpus(corpus.AbstractCorpus):
         #    untranscribed_dir, fn.strip(".wav"))
         #    for fn in os.listdir(untranscribed_dir) if fn.endswith(".wav")]
 
-        #if max_samples:
-        #    prefixes = self.sort_and_filter_by_size(prefixes, max_samples)
+        # Remove prefixes whose feature files are too long.
+
+        if max_samples:
+            # TODO Refactor so I don't do this rigmorole with prefix basenames
+            # and path.join. Prefixes should only ever be stored as the
+            # basename, without the FEAT_DIR path included.
+            prefixes = [os.path.basename(prefix) for prefix in prefixes]
+            prefixes = utils.sort_and_filter_by_size(
+                FEAT_DIR, prefixes, feat_type, max_samples)
+            prefixes = [os.path.join(input_dir, prefix) for prefix in prefixes]
 
         # To ensure we always get the same train/valid/test split, but
         # to shuffle it nonetheless.

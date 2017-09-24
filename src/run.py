@@ -106,24 +106,28 @@ def train_babel():
     model = rnn_ctc.Model(exp_dir, corpus_reader, num_layers=3)
     model.train()
 
-
 def calc_time():
     """ Calculates the total spoken time a given number of utterances
     corresponds to. """
 
     import numpy as np
 
-    for i in [128,256,512,1024,2048]:
-        corpus = datasets.na.Corpus(feat_type="log_mel_filterbank",
+    #for i in [128,256,512,1024,2048]:
+    for i in [7420]:
+        corpus = datasets.na.Corpus(feat_type="fbank",
                                          target_type="phonemes")
-        corpus_reader = CorpusReader(corpus, num_train=i)
+        #corpus_reader = CorpusReader(corpus, num_train=i)
 
-        print(len(corpus_reader.train_fns))
+        #print(len(corpus_reader.train_fns))
 
         total_frames = 0
-        #for feat_fn, _, _ in corpus.get_train_fns():
-        for feat_fn in corpus_reader.corpus.get_test_fns()[0]:
-            #print(feat_fn)
+        for feat_fn in corpus.get_train_fns()[0]:
+            frames = len(np.load(feat_fn))
+            total_frames += frames
+        for feat_fn in corpus.get_valid_fns()[0]:
+            frames = len(np.load(feat_fn))
+            total_frames += frames
+        for feat_fn in corpus.get_test_fns()[0]:
             frames = len(np.load(feat_fn))
             total_frames += frames
 

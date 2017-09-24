@@ -41,13 +41,13 @@ def multi_train():
     #train("na", "phonemes_onehot", "tones", num_layers=2, hidden_size=100)
     #train("na", "fbank", "phonemes", num_layers=2, hidden_size=100)
     #train("na", "fbank", "phonemes", num_layers=2, hidden_size=250)
-    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=2, hidden_size=400)
-    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=3, hidden_size=100)
-    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=3, hidden_size=250)
-    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=3, hidden_size=400)
-    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=4, hidden_size=100)
-    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=4, hidden_size=250)
-    train("na", "fbank_and_pitch", "phonemes_and_tones", num_layers=4, hidden_size=400)
+    #train("na", "fbank", "phonemes", num_layers=2, hidden_size=400)
+    #train("na", "fbank", "phonemes", num_layers=3, hidden_size=100)
+    #train("na", "fbank", "phonemes", num_layers=3, hidden_size=250)
+    train("na", "fbank", "phonemes", num_layers=3, hidden_size=400)
+    train("na", "fbank", "phonemes", num_layers=4, hidden_size=100)
+    train("na", "fbank", "phonemes", num_layers=4, hidden_size=250)
+    train("na", "fbank", "phonemes", num_layers=4, hidden_size=400)
 
 def train(language, feat_type, label_type, num_layers=3, hidden_size=250):
     """ Run an experiment. """
@@ -60,9 +60,9 @@ def train(language, feat_type, label_type, num_layers=3, hidden_size=250):
     num_trains = [2048]
 
     if language == "chatino":
-        corpus = datasets.chatino.Corpus(feat_type, label_type)
+        corpus = datasets.chatino.Corpus(feat_type, label_type, max_samples=900)
     elif language == "na":
-        corpus = datasets.na.Corpus(feat_type, label_type)
+        corpus = datasets.na.Corpus(feat_type, label_type, max_samples=900)
     else:
         raise Exception("Language '%s' not supported." % language)
 

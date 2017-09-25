@@ -33,6 +33,58 @@ def prep_exp_dir():
 
     return os.path.join(EXP_DIR, str(exp_num))
 
+def latticetm():
+    """ Runs an experiment involving training an AM, training a lattice--word
+    TM using LatticeTM, and evaluating on a test subset."""
+
+    feat_type = "fbank_and_pitch"
+    label_type = "phonemes_and_tones"
+    num_train = 2048
+    #Set exp_dir if you want to use a previously trained AM.
+    exp_dir = None
+
+    # Load the corpus
+    corpus = datasets.na.Corpus(feat_type=feat_type, label_type=label_type)
+    corpus_reader = CorpusReader(corpus, num_train=num_train)
+
+    # Train an acoustic model using training wavs and transcriptions
+    if not exp_dir:
+        exp_dir = train(feat_type, label_type)
+
+    # Load the model 
+    model = rnn_ctc.Model(exp_dir, corpus_reader)
+    restore_model_path = os.path.join(exp_dir, "model", "model_best.ckpt")
+
+    # Generate lattices for train/valid/test sets.
+    # TODO restore_model_path should be used above in loading model and
+    # factored out of the below statements.
+    model.output_lattices(corpus_reader.valid_batch(), restore_model_path)
+    model.output_lattices(corpus_reader.test_batch(), restore_model_path)
+    train_batches = corpus_reader.train_batch_gen()
+    for batch in train_batches:
+        model.output_lattices(batch, restore_model_path)
+
+    # TODO Train a LatticeTM Model using train/valid/test sets.
+    # -Create lattice filename file.
+    # -Create translations file.
+    # -Call latticeTM and specify and output file where all 1best hypotheses
+    # will be put.
+
+
+    # TODO Select the subset of the 1best hypotheses that correspond to the
+    # test set and evaluate.
+
+def produce_na_lattices():
+    """ Apply a previously trained model to some test data. """
+    exp_dir = prep_exp_dir()
+    corpus = datasets.na.Corpus(feat_type="log_mel_filterbank",
+                                target_type="phn", tones=True)
+    corpus_reader = CorpusReader(corpus, num_train=2048)
+    model = rnn_ctc.Model(exp_dir, corpus_reader)
+    restore_model_path = os.path.join(
+        EXP_DIR, "131", "model", "model_best.ckpt")
+    model.output_lattices(corpus_reader.valid_batch(), restore_model_path)
+
 def multi_train():
     train("fbank_and_pitch", "phonemes")
     train("fbank_and_pitch", "phonemes_and_tones")
@@ -77,6 +129,7 @@ def train(feat_type, label_type):
     print("num_layers: %d" % num_layers)
     print("hidden_size: %d" % hidden_size)
     print("Exp dirs:", exp_dirs)
+    return exp_dirs[-1] # For downstream lattice extraction.
 
 def train_babel():
     # Prepares a new experiment dir for all logging.

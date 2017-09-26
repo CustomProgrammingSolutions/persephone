@@ -38,26 +38,28 @@ def prep_exp_dir():
     return os.path.join(EXP_DIR, str(exp_num))
 
 def multi_train():
-    #train("na", "phonemes_onehot", "tones", num_layers=2, hidden_size=100)
-    #train("na", "fbank", "phonemes", num_layers=2, hidden_size=100)
-    #train("na", "fbank", "phonemes", num_layers=2, hidden_size=250)
-    #train("na", "fbank", "phonemes", num_layers=2, hidden_size=400)
-    #train("na", "fbank", "phonemes", num_layers=3, hidden_size=100)
-    #train("na", "fbank", "phonemes", num_layers=3, hidden_size=250)
-    train("na", "fbank", "phonemes", num_layers=3, hidden_size=400)
-    train("na", "fbank", "phonemes", num_layers=4, hidden_size=100)
-    train("na", "fbank", "phonemes", num_layers=4, hidden_size=250)
-    train("na", "fbank", "phonemes", num_layers=4, hidden_size=400)
+    results_dir = "results_na_run_1"
+    train("na", "fbank", "phonemes_and_tones", results_dir, num_layers=3, hidden_size=250)
+    train("na", "fbank_and_pitch", "phonemes_and_tones", results_dir, num_layers=3, hidden_size=250)
+    train("na", "fbank", "phonemes", results_dir, num_layers=3, hidden_size=250)
+    train("na", "fbank_and_pitch", "phonemes", results_dir, num_layers=3, hidden_size=250)
+    train("na", "fbank", "tones", results_dir, num_layers=3, hidden_size=250)
+    train("na", "fbank_and_pitch", "tones", results_dir, num_layers=3, hidden_size=250)
+    train("na", "phonemes", "tones", results_dir, num_layers=3, hidden_size=250)
+    train("na", "pitch", "tones", results_dir, num_layers=3, hidden_size=250)
 
-def train(language, feat_type, label_type, num_layers=3, hidden_size=250):
+def train(language, feat_type, label_type, results_dir, num_layers=3, hidden_size=250):
     """ Run an experiment. """
+
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
 
     fn = "%s_%s_%s_%s_%s" % (language, feat_type, label_type, num_layers, hidden_size)
 
     #feat_type = "fbank"
     #label_type = "tones"
-    #num_trains = [128,256,512,1024,2048]
-    num_trains = [2048]
+    num_trains = [128,256,512,1024,2048]
+    #num_trains = [2048]
 
     if language == "chatino":
         corpus = datasets.chatino.Corpus(feat_type, label_type, max_samples=900)
@@ -80,7 +82,7 @@ def train(language, feat_type, label_type, num_layers=3, hidden_size=250):
                                                        else True))
         model.train()
 
-    with open(os.path.join(EXP_DIR, "results", fn), "w") as f:
+    with open(os.path.join(EXP_DIR, results_dir, fn), "w") as f:
         print("language: %s" % language, file=f)
         print("feat_type: %s" % feat_type, file=f)
         print("label_type: %s" % label_type, file=f)

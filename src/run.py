@@ -38,27 +38,28 @@ def prep_exp_dir():
     return os.path.join(EXP_DIR, str(exp_num))
 
 def multi_train():
-    results_dir = "results_na_run_1"
-    train("na", "fbank", "phonemes_and_tones", results_dir, num_layers=3, hidden_size=250)
-    train("na", "fbank_and_pitch", "phonemes_and_tones", results_dir, num_layers=3, hidden_size=250)
-    train("na", "fbank", "phonemes", results_dir, num_layers=3, hidden_size=250)
-    train("na", "fbank_and_pitch", "phonemes", results_dir, num_layers=3, hidden_size=250)
-    train("na", "fbank", "tones", results_dir, num_layers=3, hidden_size=250)
-    train("na", "fbank_and_pitch", "tones", results_dir, num_layers=3, hidden_size=250)
-    train("na", "phonemes", "tones", results_dir, num_layers=3, hidden_size=250)
-    train("na", "pitch", "tones", results_dir, num_layers=3, hidden_size=250)
+    results_dir = "results_chatino_run_1"
+    train("chatino", "fbank", "phonemes_and_tones", results_dir, num_layers=3, hidden_size=250)
+    train("chatino", "fbank_and_pitch", "phonemes_and_tones", results_dir, num_layers=3, hidden_size=250)
+    train("chatino", "fbank", "phonemes", results_dir, num_layers=3, hidden_size=250)
+    train("chatino", "fbank_and_pitch", "phonemes", results_dir, num_layers=3, hidden_size=250)
+    train("chatino", "fbank", "tones", results_dir, num_layers=3, hidden_size=250)
+    train("chatino", "fbank_and_pitch", "tones", results_dir, num_layers=3, hidden_size=250)
+    train("chatino", "phonemes", "tones", results_dir, num_layers=3, hidden_size=250)
+    train("chatino", "pitch", "tones", results_dir, num_layers=3, hidden_size=250)
 
 def train(language, feat_type, label_type, results_dir, num_layers=3, hidden_size=250):
     """ Run an experiment. """
 
-    if not os.path.exists(results_dir):
-        os.makedirs(results_dir)
+    results_path = os.path.join(EXP_DIR, results_dir)
+    if not os.path.exists(results_path):
+        os.makedirs(results_path)
 
     fn = "%s_%s_%s_%s_%s" % (language, feat_type, label_type, num_layers, hidden_size)
 
     #feat_type = "fbank"
     #label_type = "tones"
-    num_trains = [128,256,512,1024,2048]
+    num_trains = [128,256,512,1024,1792]
     #num_trains = [2048]
 
     if language == "chatino":
@@ -73,7 +74,7 @@ def train(language, feat_type, label_type, results_dir, num_layers=3, hidden_siz
         # Prepares a new experiment dir for all logging.
         exp_dir = prep_exp_dir()
         exp_dirs.append(exp_dir)
-        corpus_reader = CorpusReader(corpus, num_train=i)
+        corpus_reader = CorpusReader(corpus, num_train=i, batch_size=64)
         model = rnn_ctc.Model(exp_dir, corpus_reader,
                               num_layers=num_layers,
                               hidden_size=hidden_size,
@@ -82,7 +83,7 @@ def train(language, feat_type, label_type, results_dir, num_layers=3, hidden_siz
                                                        else True))
         model.train()
 
-    with open(os.path.join(EXP_DIR, results_dir, fn), "w") as f:
+    with open(os.path.join(results_path, fn), "w") as f:
         print("language: %s" % language, file=f)
         print("feat_type: %s" % feat_type, file=f)
         print("label_type: %s" % label_type, file=f)
@@ -116,26 +117,37 @@ def calc_time():
 
     #for i in [128,256,512,1024,2048]:
     for i in [7420]:
-        corpus = datasets.na.Corpus(feat_type="fbank",
-                                         target_type="phonemes")
+        corpus = datasets.chatino.Corpus(feat_type="fbank",
+                                         label_type="phonemes")
         #corpus_reader = CorpusReader(corpus, num_train=i)
 
         #print(len(corpus_reader.train_fns))
 
         total_frames = 0
+        train_frames = 0
+        valid_frames = 0
+        test_frames = 0
         for feat_fn in corpus.get_train_fns()[0]:
             frames = len(np.load(feat_fn))
             total_frames += frames
+            train_frames += frames
         for feat_fn in corpus.get_valid_fns()[0]:
             frames = len(np.load(feat_fn))
             total_frames += frames
+            valid_frames += frames
         for feat_fn in corpus.get_test_fns()[0]:
             frames = len(np.load(feat_fn))
             total_frames += frames
+            test_frames += frames
 
         total_time = ((total_frames*10)/1000)/60
-        print(total_time)
-        print("%0.3f minutes." % total_time)
+        train_time = ((train_frames*10)/1000)/60
+        valid_time = ((valid_frames*10)/1000)/60
+        test_time = ((test_frames*10)/1000)/60
+        print("Total time: %0.3f minutes." % total_time)
+        print("Train time: %0.3f minutes." % train_time)
+        print("Valid time: %0.3f minutes." % valid_time)
+        print("Test time: %0.3f minutes." % test_time)
 
 def train_japhug():
     """ Run an experiment. """

@@ -218,7 +218,7 @@ class Corpus(corpus.AbstractCorpus):
 
     # TODO Reconsider the place of these splits. Perhaps train/dev/test
     # directories should be used instead, and generated in the prepare() step.
-    TRAIN_VALID_TEST_SPLIT = [2048, 207, 206]
+    TRAIN_VALID_TEST_SPLIT = [1792, 272, 231]
 
     def __init__(self, feat_type, label_type, max_samples=1000):
         super().__init__(feat_type, label_type)
@@ -255,6 +255,9 @@ class Corpus(corpus.AbstractCorpus):
         valid_end = self.TRAIN_VALID_TEST_SPLIT[0]+self.TRAIN_VALID_TEST_SPLIT[1]
         self.valid_prefixes = self.prefixes[self.TRAIN_VALID_TEST_SPLIT[0]:valid_end]
         self.test_prefixes = self.prefixes[valid_end:]
+        print(len(self.prefixes))
+        print(len(self.valid_prefixes))
+        print(len(self.test_prefixes))
 
         # TODO Make the distinction between this and the constants at the start
         # of the file clear.

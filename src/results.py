@@ -124,15 +124,21 @@ def create_align_hist(exp_path, labels):
             #    errors.append(arrow)
             errors.append(arrow)
 
-
+    total_hist = {}
     err_hist = {}
     for error in errors:
         if error in err_hist:
             err_hist[error] += 1
         else:
             err_hist[error] = 1
+        if error[0] != error[1] and error[1] != "" and error[0] != "":
+            if error[0] in total_hist:
+                total_hist[error[0]] += 1
+            else:
+                total_hist[error[0]] = 1
 
-    return err_hist
+    return err_hist, total_hist
+
 
 def error_types(exp_path, labels):
     """ Stats about the most common types of errors in the test set."""
@@ -149,27 +155,32 @@ def confusion_matrix(exp_path, labels):
     labels = labels[:]
     labels.remove("˩˧")
     labels.remove("˧˩")
-    align_hist = create_align_hist(exp_path, labels)
+    labels = ["˧","˩","˥","˩˥","˧˥"]
+    lmap = {"˩":"L","˥":"H","˧":"M","˧˥":"MH","˩˥":"LH"}
+
+    align_hist, total_hist = create_align_hist(exp_path, labels)
+    print(total_hist.items())
+
     # Don't consider counts for non-errors
     for key in align_hist.keys():
         if key[0] == key[1]:
             align_hist[key] = 0
     print(align_hist)
     for l_j in labels[:-1]:
-        print(l_j, end=",")
-    print(labels[-1], end="")
+        print(lmap[l_j], end=",")
+    print(lmap[labels[-1]], end="")
     print()
     for l_i in labels:
-        print(l_i, end=",")
+        print(lmap[l_i], end=",")
         for l_j in labels[:-1]:
             key = (l_i, l_j)
             if key in align_hist:
-                print(align_hist[key], end=",")
+                print("%0.1f" % (align_hist[key]*100/total_hist[key[0]]), end=",")
             else:
                 print(0, end=",")
         key = (l_i, labels[-1])
         if key in align_hist:
-            print(align_hist[key], end="")
+            print("%0.1f" % (align_hist[key]*100/total_hist[key[0]]), end="")
         else:
             print(0, end="")
         print()

@@ -38,14 +38,14 @@ def prep_exp_dir():
     return os.path.join(EXP_DIR, str(exp_num))
 
 def multi_train():
-    results_dir = "results_chatino_run_1"
-    train("chatino", "fbank", "phonemes_and_tones", results_dir, num_layers=3, hidden_size=250)
-    train("chatino", "fbank_and_pitch", "phonemes_and_tones", results_dir, num_layers=3, hidden_size=250)
-    train("chatino", "fbank", "phonemes", results_dir, num_layers=3, hidden_size=250)
-    train("chatino", "fbank_and_pitch", "phonemes", results_dir, num_layers=3, hidden_size=250)
-    train("chatino", "fbank", "tones", results_dir, num_layers=3, hidden_size=250)
-    train("chatino", "fbank_and_pitch", "tones", results_dir, num_layers=3, hidden_size=250)
-    train("chatino", "phonemes", "tones", results_dir, num_layers=3, hidden_size=250)
+    results_dir = "results_chatino_run_2"
+    #train("chatino", "fbank", "phonemes_and_tones", results_dir, num_layers=3, hidden_size=250)
+    #train("chatino", "fbank_and_pitch", "phonemes_and_tones", results_dir, num_layers=3, hidden_size=250)
+    #train("chatino", "fbank", "phonemes", results_dir, num_layers=3, hidden_size=250)
+    #train("chatino", "fbank_and_pitch", "phonemes", results_dir, num_layers=3, hidden_size=250)
+    #train("chatino", "fbank", "tones", results_dir, num_layers=3, hidden_size=250)
+    #train("chatino", "fbank_and_pitch", "tones", results_dir, num_layers=3, hidden_size=250)
+    train("chatino", "phonemes_onehot", "tones", results_dir, num_layers=3, hidden_size=250)
     train("chatino", "pitch", "tones", results_dir, num_layers=3, hidden_size=250)
 
 def train(language, feat_type, label_type, results_dir, num_layers=3, hidden_size=250):
@@ -61,6 +61,12 @@ def train(language, feat_type, label_type, results_dir, num_layers=3, hidden_siz
     #label_type = "tones"
     num_trains = [128,256,512,1024,1792]
     #num_trains = [2048]
+
+    print("language: %s" % language)
+    print("feat_type: %s" % feat_type)
+    print("label_type: %s" % label_type)
+    print("num_layers: %d" % num_layers)
+    print("hidden_size: %d" % hidden_size)
 
     if language == "chatino":
         corpus = datasets.chatino.Corpus(feat_type, label_type, max_samples=900)
@@ -117,17 +123,16 @@ def calc_time():
 
     #for i in [128,256,512,1024,2048]:
     for i in [7420]:
-        corpus = datasets.chatino.Corpus(feat_type="fbank",
-                                         label_type="phonemes")
+        corpus = datasets.chatino.Corpus(feat_type="fbank", label_type="phonemes")
         #corpus_reader = CorpusReader(corpus, num_train=i)
 
-        #print(len(corpus_reader.train_fns))
+        print(len(corpus.get_train_fns()[0]))
 
         total_frames = 0
         train_frames = 0
         valid_frames = 0
         test_frames = 0
-        for feat_fn in corpus.get_train_fns()[0]:
+        for feat_fn in corpus.get_train_fns()[0][:2048]:
             frames = len(np.load(feat_fn))
             total_frames += frames
             train_frames += frames

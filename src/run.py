@@ -86,50 +86,54 @@ def produce_na_lattices():
     model.output_lattices(corpus_reader.valid_batch(), restore_model_path)
 
 def multi_train():
-    train("fbank_and_pitch", "phonemes")
-    train("fbank_and_pitch", "phonemes_and_tones")
-    train("fbank_and_pitch", "tones")
+    #train("na", "fbank_and_pitch", "phonemes_and_tones", 3, 250,
+    #      train_rec_type="wordlist")
+    #train("na", "fbank_and_pitch", "phonemes_and_tones", 3, 250,
+    #      train_rec_type="text")
+    #train("na", "fbank_and_pitch", "phonemes_and_tones", 3, 400,
+    #      train_rec_type="text_and_wordlist", batch_size=32)
+    train("na", "fbank_and_pitch", "phonemes_and_tones", 3, 250,
+          train_rec_type="text_and_wordlist")
 
-def train(feat_type, label_type):
+def train(language, feat_type, label_type,
+          num_layers, hidden_size,
+          num_train=None, batch_size=64,
+          train_rec_type="text_and_wordlist"):
     """ Run an experiment. """
-
-    #feat_type = "fbank"
-    #label_type = "tones"
-    language = "na"
-    num_layers = 3
-    hidden_size = 250
-    #num_trains = [128,256,512,1024,2048]
-    num_trains = [6592]
-    #num_trains = [2048]
 
     if language == "chatino":
         corpus = datasets.chatino.Corpus(feat_type, label_type)
     elif language == "na":
-        corpus = datasets.na.Corpus(feat_type, label_type)
+        corpus = datasets.na.Corpus(feat_type, label_type,
+                                    train_rec_type=train_rec_type)
     else:
         raise Exception("Language '%s' not supported." % language)
 
-    exp_dirs = []
-    for i in num_trains:
-        # Prepares a new experiment dir for all logging.
-        exp_dir = prep_exp_dir()
-        exp_dirs.append(exp_dir)
-        corpus_reader = CorpusReader(corpus, num_train=i)
-        model = rnn_ctc.Model(exp_dir, corpus_reader,
-                              num_layers=num_layers,
-                              hidden_size=hidden_size,
-                              decoding_merge_repeated=(False if
-                                                       label_type=="tones"
-                                                       else True))
-        model.train()
+    # Prepares a new experiment dir for all logging.
+    exp_dir = prep_exp_dir()
+    if num_train:
+        corpus_reader = CorpusReader(corpus, num_train=num_train, batch_size=batch_size)
+    else:
+        corpus_reader = CorpusReader(corpus, batch_size=batch_size)
+    model = rnn_ctc.Model(exp_dir, corpus_reader,
+                          num_layers=num_layers,
+                          hidden_size=hidden_size,
+                          decoding_merge_repeated=(False if
+                                                   label_type=="tones"
+                                                   else True))
+    model.train()
 
     print("language: %s" % language)
     print("feat_type: %s" % feat_type)
     print("label_type: %s" % label_type)
+    print("train_rec_type: %s" % train_rec_type)
     print("num_layers: %d" % num_layers)
     print("hidden_size: %d" % hidden_size)
-    print("Exp dirs:", exp_dirs)
-    return exp_dirs[-1] # For downstream lattice extraction.
+    if num_train:
+        print("num_train: %d" % num_train)
+    print("batch_size: %d" % batch_size)
+    print("Exp dir:", exp_dir)
+    return exp_dirs # For downstream lattice extraction.
 
 def train_babel():
     # Prepares a new experiment dir for all logging.
@@ -220,8 +224,8 @@ def transcribe():
     """ Applies a trained model to the untranscribed Na data for Alexis. """
 
     exp_dir = prep_exp_dir()
-    corpus = datasets.na.Corpus(feat_type="log_mel_filterbank",
-                                target_type="phn", tones=True)
+    corpus = datasets.na.Corpus(feat_type="fbank_and_pitch",
+                                label_type="phonemes_and_tones")
     corpus_reader = CorpusReader(corpus, num_train=2048)
     model = rnn_ctc.Model(exp_dir, corpus_reader)
     #print(corpus_reader.untranscribed_batch())
@@ -229,7 +233,7 @@ def transcribe():
     # Model 155 is the first Na ASR model used to give transcriptions to
     # Alexis Michaud
     restore_model_path = os.path.join(
-        EXP_DIR, "155", "model", "model_best.ckpt")
+        EXP_DIR, "552", "model", "model_best.ckpt")
 
     #model.eval(restore_model_path, corpus_reader.)
     model.transcribe(restore_model_path)

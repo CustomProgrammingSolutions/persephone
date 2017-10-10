@@ -4,6 +4,7 @@ import inspect
 import itertools
 import os
 import subprocess
+from operator import itemgetter
 
 import numpy as np
 import tensorflow as tf
@@ -59,8 +60,17 @@ class Model:
             hyps_dir = os.path.join(self.exp_dir, "auto_transcripts")
             if not os.path.isdir(hyps_dir):
                 os.mkdir(hyps_dir)
+
+            # TODO This sorting is Na-corpus centric and won't generalize. It
+            # is to sort by recording name (ie. Benevolence) then by utterance
+            # id within that (Benevolence.0, benevolence.1, ...)
+            utters = [(hyps, feat_fn, feat_fn.split(".")[0], int(feat_fn.split(".")[1]))
+                      for hyps, feat_fn in zip(hyps, feat_fn_batch)]
+            print(utters)
+            utters.sort(key=itemgetter(2,3))
+            print(utters)
             with open(os.path.join(hyps_dir, "hyps"), "w") as hyps_f:
-                for hyp, fn in zip(hyps, feat_fn_batch):
+                for hyp, fn, _, _ in utters:
                     fn = "_".join(os.path.basename(fn).split(".")[:2])
                     print(fn + ": ", file=hyps_f)
                     print(" ".join(hyp), file=hyps_f)
@@ -180,7 +190,7 @@ class Model:
             with open(os.path.join(hyps_dir, "test_per"), "w") as per_f:
                 print("Test PER: %f, tf LER: %f" % (test_per, test_ler), file=per_f)
 
-    def train(self, early_stopping_steps=10, min_epochs=40, max_ler=1.0,
+    def train(self, early_stopping_steps=10, min_epochs=30, max_ler=1.0,
               restore_model_path=None):
         """ Train the model.
 
@@ -235,6 +245,7 @@ class Model:
             os.mkdir(hyps_dir)
 
         for epoch in itertools.count():
+            print("exp_dir %s, epoch %d" % (self.exp_dir, epoch))
             batch_gen = self.corpus_reader.train_batch_gen()
 
             train_ler_total = 0

@@ -14,19 +14,19 @@ import feat_extract
 import datasets.pangloss
 import utils
 
-random.seed(0)
-
 ORG_DIR = config.NA_DIR
 # TODO eventually remove "new" when ALTA experiments are finished.
 TGT_DIR = os.path.join(config.TGT_DIR, "na", "new")
-#ORG_TXT_NORM_DIR = os.path.join(ORG_DIR, "txt_norm")
-#TGT_TXT_NORM_DIR = os.path.join(TGT_DIR, "txt_norm")
 ORG_XML_DIR = os.path.join(ORG_DIR, "xml")
 ORG_WAV_DIR = os.path.join(ORG_DIR, "wav")
 TGT_WAV_DIR = os.path.join(TGT_DIR, "wav")
 FEAT_DIR = os.path.join(TGT_DIR, "feat")
 LABEL_DIR = os.path.join(TGT_DIR, "label")
 TRANSL_DIR = os.path.join(TGT_DIR, "transl")
+
+# The directory for untranscribed audio we want to transcribe with automatic
+# methods.
+UNTRAN_DIR = os.path.join(TGT_DIR, "untranscribed")
 
 #PREFIXES = [os.path.splitext(fn)[0]
 #            for fn in os.listdir(ORG_TRANSCRIPT_DIR)
@@ -43,7 +43,7 @@ if not os.path.isdir(FEAT_DIR):
 MISC_SYMBOLS = [' ̩', '~', '=', ':', 'F', '¨', '↑', '“', '”', '…', '«', '»',
 'D', 'a', 'ː', '#', '$', "‡"]
 BAD_NA_SYMBOLS = ['D', 'F', '~', '…', '=', '↑', ':']
-PUNC_SYMBOLS = [',', '!', '.', ';', '?', "'", '"', '*', ':', '«', '»', '“', '”']
+PUNC_SYMBOLS = [',', '!', '.', ';', '?', "'", '"', '*', ':', '«', '»', '“', '”', "ʔ"]
 UNI_PHNS = {'q', 'p', 'ɭ', 'ɳ', 'h', 'ʐ', 'n', 'o', 'ɤ', 'ʝ', 'ɛ', 'g',
             'i', 'u', 'b', 'ɔ', 'ɯ', 'v', 'ɑ', 'l', 'ɖ', 'ɻ', 'ĩ', 'm',
             't', 'w', 'õ', 'ẽ', 'd', 'ɣ', 'ɕ', 'c', 'ʁ', 'ʑ', 'ʈ', 'ɲ', 'ɬ',
@@ -51,7 +51,7 @@ UNI_PHNS = {'q', 'p', 'ɭ', 'ɳ', 'h', 'ʐ', 'n', 'o', 'ɤ', 'ʝ', 'ɛ', 'g',
 BI_PHNS = {'dʑ', 'ẽ', 'ɖʐ', 'w̃', 'æ̃', 'qʰ', 'i͂', 'tɕ', 'v̩', 'o̥', 'ts',
            'ɻ̩', 'ã', 'ə̃', 'ṽ', 'pʰ', 'tʰ', 'ɤ̃', 'ʈʰ', 'ʈʂ', 'ɑ̃', 'ɻ̃', 'kʰ',
            'ĩ', 'õ', 'dz', "ɻ̍"}
-TRI_PHNS = {"tɕʰ", "ʈʂʰ", "tsʰ", "ṽ̩", "ṽ̩"}
+TRI_PHNS = {"tɕʰ", "ʈʂʰ", "tsʰ", "ṽ̩", "ṽ̩", "ɻ̩̃"}
 UNI_TONES = {"˩", "˥", "˧"}
 BI_TONES = {"˧˥", "˩˥", "˩˧", "˧˩"}
 TONES = UNI_TONES.union(BI_TONES)
@@ -150,6 +150,9 @@ def preprocess_na(sent, label_type):
         filtered_sentence = [item for item in filtered_sentence if item != None]
         return " ".join(filtered_sentence)
 
+    # Filter utterances with certain words
+    if "BEGAIEMENT" in sent:
+        return ""
     sent = filter_for_phonemes(sent)
     return sent
 
@@ -166,95 +169,159 @@ def preprocess_french(trans, fr_nlp, remove_brackets_content=True):
 
     return trans
 
-def preprocess_from_xml(org_xml_dir, org_wav_dir,
-                        tgt_sent_dir, tgt_transl_dir, tgt_wav_dir,
-                        label_type):
-    # TODO Remove label_type from here and use the TGT_DIR/txt dir for the
-    # unprocessed transcription from XML; then extract labels with
-    # prepare_labels()
+def trim_wavs():
     """ Extracts sentence-level transcriptions, translations and wavs from the
     Na Pangloss XML and WAV files. But otherwise doesn't preprocess them."""
+
+    print("Trimming wavs...")
+
+    if not os.path.exists(os.path.join(TGT_WAV_DIR, "TEXT")):
+        os.makedirs(os.path.join(TGT_WAV_DIR, "TEXT"))
+    if not os.path.exists(os.path.join(TGT_WAV_DIR, "WORDLIST")):
+        os.makedirs(os.path.join(TGT_WAV_DIR, "WORDLIST"))
+
+    for fn in os.listdir(ORG_XML_DIR):
+        print(fn)
+        path = os.path.join(ORG_XML_DIR, fn)
+        prefix, _ = os.path.splitext(fn)
+
+        rec_type, sents, times, transls = datasets.pangloss.get_sents_times_and_translations(path)
+
+        # Extract the wavs given the times.
+        for i, (start_time, end_time) in enumerate(times):
+            if prefix.endswith("PLUSEGG"):
+                in_wav_path = os.path.join(ORG_WAV_DIR, prefix.upper()[:-len("PLUSEGG")]) + ".wav"
+            else:
+                in_wav_path = os.path.join(ORG_WAV_DIR, prefix.upper()) + ".wav"
+            headmic_path = os.path.join(ORG_WAV_DIR, prefix.upper()) + "_HEADMIC.wav"
+            if os.path.isfile(headmic_path):
+                in_wav_path = headmic_path
+
+            out_wav_path = os.path.join(TGT_WAV_DIR, rec_type, "%s.%d.wav" % (prefix, i))
+            assert os.path.isfile(in_wav_path)
+            utils.trim_wav(in_wav_path, out_wav_path, start_time, end_time)
+
+def prepare_transls():
+    """ Prepares the French translations. """
 
     import spacy
     fr_nlp = spacy.load("fr")
 
-    for fn in os.listdir(org_xml_dir):
+    if not os.path.exists(os.path.join(TRANSL_DIR, "TEXT")):
+        os.makedirs(os.path.join(TRANSL_DIR, "TEXT"))
+    if not os.path.exists(os.path.join(TRANSL_DIR, "WORDLIST")):
+        os.makedirs(os.path.join(TRANSL_DIR, "WORDLIST"))
+
+    for fn in os.listdir(ORG_XML_DIR):
         print(fn)
-        path = os.path.join(org_xml_dir, fn)
-        sents, times, transls = datasets.pangloss.get_sents_times_and_translations(path)
-
-        assert len(sents) == len(times)
-        assert len(sents) == len(transls)
-
+        path = os.path.join(ORG_XML_DIR, fn)
         prefix, _ = os.path.splitext(fn)
 
-        # Write the transcriptions to file
+        rec_type, sents, times, transls = datasets.pangloss.get_sents_times_and_translations(path)
+
+        # Tokenize the French translations and write them to file.
+        transls = [preprocess_french(transl[0], fr_nlp) for transl in transls]
+        for i, transl in enumerate(transls):
+            out_prefix = "%s.%d" % (prefix, i)
+            transl_path = os.path.join(TRANSL_DIR, rec_type, out_prefix + ".fr.txt")
+            with open(transl_path, "w") as transl_f:
+                print(transl, file=transl_f)
+
+def prepare_labels(label_type):
+    """ Prepare the neural network output targets."""
+
+    if not os.path.exists(os.path.join(LABEL_DIR, "TEXT")):
+        os.makedirs(os.path.join(LABEL_DIR, "TEXT"))
+    if not os.path.exists(os.path.join(LABEL_DIR, "WORDLIST")):
+        os.makedirs(os.path.join(LABEL_DIR, "WORDLIST"))
+
+    for fn in os.listdir(ORG_XML_DIR):
+        print(fn)
+        path = os.path.join(ORG_XML_DIR, fn)
+        prefix, _ = os.path.splitext(fn)
+
+        rec_type, sents, times, transls = datasets.pangloss.get_sents_times_and_translations(path)
+        # Write the sentence transcriptions to file
         sents = [preprocess_na(sent, label_type) for sent in sents]
         for i, sent in enumerate(sents):
             if sent.strip() == "":
                 # Then there's no transcription, so ignore this.
                 continue
             out_fn = "%s.%d.%s" % (prefix, i, label_type)
-            sent_path = os.path.join(tgt_sent_dir, out_fn)
+            sent_path = os.path.join(LABEL_DIR, rec_type, out_fn)
             with open(sent_path, "w") as sent_f:
                 print(sent, file=sent_f)
 
-        """
-        # Extract the wavs given the times.
-        for i, (start_time, end_time) in enumerate(times):
-            if prefix.endswith("PLUSEGG"):
-                in_wav_path = os.path.join(org_wav_dir, prefix.upper()[:-len("PLUSEGG")]) + ".wav"
-            else:
-                in_wav_path = os.path.join(org_wav_dir, prefix.upper()) + ".wav"
-            headmic_path = os.path.join(org_wav_dir, prefix.upper()) + "_HEADMIC.wav"
-            if os.path.isfile(headmic_path):
-                in_wav_path = headmic_path
+# TODO Consider factoring out as non-Na specific.
+def prepare_untran(feat_type="fbank_and_pitch"):
+    """ Preprocesses untranscribed audio."""
+    org_dir = os.path.join(UNTRAN_DIR, "org")
+    wav_dir = os.path.join(UNTRAN_DIR, "wav")
+    feat_dir = os.path.join(UNTRAN_DIR, "feat")
+    if not os.path.isdir(wav_dir):
+        os.makedirs(wav_dir)
+    if not os.path.isdir(feat_dir):
+        os.makedirs(feat_dir)
 
+    # Standardize into wav files.
+    for fn in os.listdir(org_dir):
+        in_path = os.path.join(org_dir, fn)
+        prefix, _ = os.path.splitext(fn)
+        mono16k_wav_path = os.path.join(wav_dir, "%s.wav" % prefix)
+        if not os.path.isfile(mono16k_wav_path):
+            feat_extract.convert_wav(in_path, mono16k_wav_path)
 
-            out_wav_path = os.path.join(tgt_wav_dir, "%s.%d.wav" % (prefix, i))
-            assert os.path.isfile(in_wav_path)
-            utils.trim_wav(in_wav_path, out_wav_path, start_time, end_time)
+    # Split up the wavs
+    wav_fns = os.listdir(wav_dir)
+    for fn in wav_fns:
+        in_fn = os.path.join(wav_dir, fn)
+        prefix, _ = os.path.splitext(fn)
+        # Split into sub-wavs and perform feat extraction.
+        split_id = 0
+        start, end = 0, 10 #in seconds
+        length = utils.wav_length(in_fn)
+        while True:
+            out_fn = os.path.join(feat_dir, "%s.%d.wav" % (prefix, split_id))
+            utils.trim_wav(in_fn, out_fn, start, end)
+            if end > length:
+                break
+            start += 10
+            end += 10
+            split_id += 1
 
-        # Tokenize the French translations and write them to file.
-        transls = [preprocess_french(transl[0], fr_nlp) for transl in transls]
-        for i, transl in enumerate(transls):
-            out_prefix = "%s.%d" % (prefix, i)
-            transl_path = os.path.join(tgt_transl_dir, out_prefix + ".fr.txt")
-            with open(transl_path, "w") as transl_f:
-                print(transl, file=transl_f)
-        """
-
-def prepare_labels(label_type):
-    """ Prepare the neural network output targets."""
-
-    # TODO This is very computationally wasteful right now as all the wavs get
-    # trimmed again. Better to pull out Na preprocessing from the XML
-    # extraction.
-    # If the XML hasn't been preprocessed.
-    preprocess_from_xml(ORG_XML_DIR, ORG_WAV_DIR,
-                        LABEL_DIR, TRANSL_DIR, TGT_WAV_DIR,
-                        label_type)
+    # Do feat extraction.
+    feat_extract.from_dir(os.path.join(feat_dir), feat_type=feat_type)
 
 # TODO Consider factoring out as non-Na specific
 def prepare_feats(feat_type):
     """ Prepare the input features."""
 
+    if not os.path.isdir(os.path.join(FEAT_DIR, "WORDLIST")):
+        os.makedirs(os.path.join(FEAT_DIR, "WORDLIST"))
+    if not os.path.isdir(os.path.join(FEAT_DIR, "TEXT")):
+        os.makedirs(os.path.join(FEAT_DIR, "TEXT"))
+
+    # Extract utterances from WAVS.
+    trim_wavs()
+
     # TODO Currently assumes that the wav trimming from XML has already been
     # done.
     PREFIXES = []
-    for fn in os.listdir(TGT_WAV_DIR):
+    for fn in os.listdir(os.path.join(TGT_WAV_DIR, "WORDLIST")):
         if fn.endswith(".wav"):
             pre, _ = os.path.splitext(fn)
-            PREFIXES.append(pre)
-
-    if not os.path.isdir(FEAT_DIR):
-        os.makedirs(FEAT_DIR)
+            PREFIXES.append(os.path.join("WORDLIST", pre))
+    for fn in os.listdir(os.path.join(TGT_WAV_DIR, "TEXT")):
+        if fn.endswith(".wav"):
+            pre, _ = os.path.splitext(fn)
+            PREFIXES.append(os.path.join("TEXT", pre))
 
     if feat_type=="phonemes_onehot":
         import numpy as np
         #prepare_labels("phonemes")
         for prefix in PREFIXES:
             label_fn = os.path.join(LABEL_DIR, "%s.phonemes" % prefix)
+            out_fn = os.path.join(FEAT_DIR, "%s.phonemes_onehot" %  prefix)
             try:
                 with open(label_fn) as label_f:
                     labels = label_f.readlines()[0].split()
@@ -265,8 +332,7 @@ def prepare_feats(feat_type):
             for i, index in enumerate(indices):
                 one_hots[i][index] = 1
                 one_hots = np.array(one_hots)
-                np.save(os.path.join(FEAT_DIR, "%s.phonemes_onehot" %  prefix),
-                        one_hots)
+                np.save(out_fn, one_hots)
     else:
         # Otherwise, 
         for prefix in PREFIXES:
@@ -277,8 +343,53 @@ def prepare_feats(feat_type):
                 feat_extract.convert_wav(wav_fn, mono16k_wav_fn)
 
         # Extract features from the wavs.
-        feat_extract.from_dir(FEAT_DIR, feat_type=feat_type)
+        feat_extract.from_dir(os.path.join(FEAT_DIR, "WORDLIST"), feat_type=feat_type)
+        feat_extract.from_dir(os.path.join(FEAT_DIR, "TEXT"), feat_type=feat_type)
 
+def make_data_splits(train_rec_type="text_and_wordlist", max_samples=1000, seed=0):
+    """ Creates a file with a list of prefixes (identifiers) of utterances to
+    include in the test set. Test utterances must never be wordlists. Assumes
+    preprocessing of label dir has already been done."""
+
+    test_prefix_fn = os.path.join(TGT_DIR, "test_prefixes.txt")
+    valid_prefix_fn = os.path.join(TGT_DIR, "valid_prefixes.txt")
+    with open(test_prefix_fn) as f:
+        prefixes = f.readlines()
+        test_prefixes = [("TEXT/" + prefix).strip() for prefix in prefixes]
+    with open(valid_prefix_fn) as f:
+        prefixes = f.readlines()
+        valid_prefixes = [("TEXT/" + prefix).strip() for prefix in prefixes]
+
+    # Get the test prefixes from TEXT.
+    prefixes = [prefix for prefix in os.listdir(os.path.join(LABEL_DIR, "TEXT"))
+                if prefix.endswith("phonemes")]
+    prefixes = [os.path.splitext(os.path.join("TEXT", prefix))[0]
+                for prefix in prefixes]
+    prefixes = list(set(prefixes) - set(valid_prefixes))
+    prefixes = list(set(prefixes) - set(test_prefixes))
+    prefixes = utils.sort_and_filter_by_size(
+        FEAT_DIR, prefixes, "fbank", max_samples)
+
+    if train_rec_type == "text":
+        train_prefixes = prefixes
+    else:
+        wordlist_prefixes = [prefix for prefix in os.listdir(os.path.join(LABEL_DIR, "WORDLIST"))
+                             if prefix.endswith("phonemes")]
+        wordlist_prefixes = [os.path.splitext(os.path.join("WORDLIST", prefix))[0]
+                             for prefix in wordlist_prefixes]
+        wordlist_prefixes = utils.sort_and_filter_by_size(
+                FEAT_DIR, wordlist_prefixes, "fbank", max_samples)
+        if train_rec_type == "wordlist":
+            prefixes = wordlist_prefixes
+        elif train_rec_type == "text_and_wordlist":
+            prefixes.extend(wordlist_prefixes)
+        else:
+            raise Exception("train_rec_type='%s' not supported." % train_rec_type)
+        train_prefixes = prefixes
+    random.seed(0)
+    random.shuffle(train_prefixes)
+
+    return train_prefixes, valid_prefixes, test_prefixes
 
 class Corpus(corpus.AbstractCorpus):
     """ Class to interface with the Na corpus. """
@@ -286,11 +397,14 @@ class Corpus(corpus.AbstractCorpus):
     # TODO Probably should be hardcoding the list of train/dev/test utterances
     # values externally? Slight changes to the list means the shuffling will
     # probably completely change the test set.
-    TRAIN_VALID_TEST_RATIOS = [.92,.04,.04]
     FEAT_DIR = FEAT_DIR
     LABEL_DIR = LABEL_DIR
+    UNTRAN_FEAT_DIR = os.path.join(UNTRAN_DIR, "feat")
 
-    def __init__(self, feat_type, label_type="phonemes_and_tones", max_samples=1000):
+    def __init__(self,
+                 feat_type="fbank_and_pitch",
+                 label_type="phonemes_and_tones",
+                 train_rec_type="text_and_wordlist", max_samples=1000):
         super().__init__(feat_type, label_type)
 
         if label_type == "phonemes_and_tones":
@@ -305,33 +419,11 @@ class Corpus(corpus.AbstractCorpus):
         self.feat_type = feat_type
         self.label_type = label_type
 
-        self.prefixes = [fn.strip("." + label_type)
-                    for fn in os.listdir(LABEL_DIR) if fn.endswith(label_type)]
-
-        # TODO Reintegrate transcribing untranscribed stuff.
-        #untranscribed_dir = os.path.join(TGT_DIR, "untranscribed_wav")
-        #self.untranscribed_prefixes = [os.path.join(
-        #    untranscribed_dir, fn.strip(".wav"))
-        #    for fn in os.listdir(untranscribed_dir) if fn.endswith(".wav")]
-
-        if max_samples:
-            self.prefixes = utils.sort_and_filter_by_size(
-                FEAT_DIR, self.prefixes, feat_type, max_samples)
-
-        # To ensure we always get the same train/valid/test split, but
-        # to shuffle it nonetheless.
-        random.seed(0)
-        random.shuffle(self.prefixes)
-
-        # Get indices of the end points of the train/valid/test parts of the
-        # data.
-        train_end = round(len(self.prefixes)*self.TRAIN_VALID_TEST_RATIOS[0])
-        valid_end = round(len(self.prefixes)*self.TRAIN_VALID_TEST_RATIOS[0] +
-                          len(self.prefixes)*self.TRAIN_VALID_TEST_RATIOS[1])
-
-        self.train_prefixes = self.prefixes[:train_end]
-        self.valid_prefixes = self.prefixes[train_end:valid_end]
-        self.test_prefixes = self.prefixes[valid_end:]
+        train, valid, test = make_data_splits(train_rec_type=train_rec_type,
+                                              max_samples=max_samples)
+        self.train_prefixes = train
+        self.valid_prefixes = valid
+        self.test_prefixes = test
 
         self.LABEL_TO_INDEX = {label: index for index, label in enumerate(
                                  ["pad"] + sorted(list(self.labels)))}

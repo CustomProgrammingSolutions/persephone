@@ -41,7 +41,7 @@ def latticetm():
     label_type = "phonemes_and_tones"
     num_train = 2048
     #Set exp_dir if you want to use a previously trained AM.
-    exp_dir = 392
+    exp_dir = "../exp/573"
 
     # Load the corpus
     corpus = datasets.na.Corpus(feat_type=feat_type, label_type=label_type)

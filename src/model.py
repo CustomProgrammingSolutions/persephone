@@ -95,7 +95,7 @@ class Model:
                         example[:length])
 
         ### Create the lattices.###
-        index_to_token = self.corpus_reader.corpus.INDEX_TO_PHONEME
+        index_to_token = self.corpus_reader.corpus.INDEX_TO_LABEL
 
         # Create symbol table.
         syms_fn = os.path.join(out_dir, "symbols.txt")

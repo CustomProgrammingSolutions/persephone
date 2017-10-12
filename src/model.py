@@ -86,7 +86,9 @@ class Model:
                 assert self.saved_model_path
                 saver.restore(sess, self.saved_model_path)
 
-            batch_x, batch_x_lens, batch_y = batch
+            batch_x, batch_x_lens, batch_y, label_fns, transl_fns = batch
+            label_fn_prefixes = [os.path.basename(label_fn)
+                                 for label_fn in label_fns]
 
             feed_dict = {self.batch_x: batch_x,
                          self.batch_x_lens: batch_x_lens,
@@ -100,8 +102,11 @@ class Model:
             if not os.path.exists(out_dir):
                 os.makedirs(out_dir)
             for i, example in enumerate(log_softmax):
+                # Get utterance name from the batch
+                prefix = label_fn_prefixes[i]
+                # Write log_softmax to file.
                 length = batch_x_lens[i]
-                np.save(os.path.join(out_dir, "utterance_%d_log_softmax" % i),
+                np.save(os.path.join(out_dir, "%s.log_softmax" % prefix),
                         example[:length])
 
         ### Create the lattices.###
@@ -111,22 +116,24 @@ class Model:
         syms_fn = os.path.join(out_dir, "symbols.txt")
         lattice.create_symbol_table(index_to_token, syms_fn)
 
-        # Create the FST that removes blanks and repeated tokens.
+       # Create the FST that removes blanks and repeated tokens.
         lattice.create_collapse_fst(index_to_token,
                                     os.path.join(out_dir, "collapse_fst.txt"))
         lattice.compile_fst(os.path.join(out_dir, "collapse_fst"), syms_fn)
 
         for i, log_softmax_example in enumerate(log_softmax):
+            # Get utterance name from the batch
+            prefix = label_fn_prefix[i]
             # Create a confusion network
             length = batch_x_lens[i]
             lattice.logsoftmax2confusion(log_softmax_example[:length],
                                          index_to_token,
-                                         os.path.join(out_dir, "utterance_%d" % i),
+                                         os.path.join(out_dir, prefix),
                                          beam_size=4)
-            lattice.compile_fst(os.path.join(out_dir, "utterance_%d.confusion" % i),
+            lattice.compile_fst(os.path.join(out_dir, "%s.confusion" % prefix),
                                 syms_fn)
 
-            prefix = os.path.join(out_dir, "utterance_%d" % i)
+            prefix = os.path.join(out_dir, "%s" % prefix)
 
             run_args = [os.path.join(OPENFST_PATH, "fstarcsort"),
                         prefix + ".confusion.bin",
@@ -152,6 +159,19 @@ class Model:
                         "--reverse=true",
                         prefix + ".projection.bin", prefix + ".rmepsilon.bin"]
             subprocess.run(run_args)
+
+        # Create lattice filename list
+        lattice_list_fn = os.path.join(out_dir, "lattice_fn_list.txt")
+        with open(lattice_list_fn, "w") as f:
+            for prefix in label_fn_prefixes:
+                lattice_fn = os.path.join(out_dir, prefix + ".rmepsilon.bin")
+                print(lattice_fn, file=f)
+        # Create translations filename list
+        transl_list_fn = os.path.join(out_dir, "transl_fn_list.txt")
+        with open(transl_list_fn, "w") as f:
+            for prefix in transl_fns:
+                print(prefix, file=f)
+
 
     def eval(self, restore_model_path=None):
         """ Evaluates the model on a test set."""

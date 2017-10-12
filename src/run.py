@@ -58,14 +58,14 @@ def latticetm():
     # Generate lattices for train/valid/test sets.
     # TODO restore_model_path should be used above in loading model and
     # factored out of the below statements.
-    model.output_lattices(corpus_reader.valid_batch(), restore_model_path)
+    #model.output_lattices(corpus_reader.valid_batch(), restore_model_path)
     model.output_lattices(corpus_reader.test_batch(), restore_model_path)
-    train_batches = corpus_reader.train_batch_gen()
-    for batch in train_batches:
-        model.output_lattices(batch, restore_model_path)
+    #train_batches = corpus_reader.train_batch_gen()
+    #for batch in train_batches:
+    #    model.output_lattices(batch, restore_model_path)
 
     # TODO Train a LatticeTM Model using train/valid/test sets.
-    # -Create lattice filename file.
+    # Create lattice filename file.
     # -Create translations file.
     # -Call latticeTM and specify and output file where all 1best hypotheses
     # will be put.

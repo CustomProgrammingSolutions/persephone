@@ -112,7 +112,9 @@ class CorpusReader:
         """ Returns a single batch with all the test cases."""
 
         test_fns = list(zip(*self.corpus.get_test_fns()))
-        return self.load_batch(test_fns) + (test_fns,)
+        label_fns = self.corpus.get_test_fns()[1]
+        transl_fns = self.corpus.get_test_fns()[2]
+        return self.load_batch(test_fns) + (label_fns, transl_fns)
 
     def untranscribed_batch(self):
         """ Returns a batch with all the untranscribed data. """

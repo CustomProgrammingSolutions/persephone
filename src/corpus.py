@@ -90,7 +90,9 @@ class AbstractCorpus(metaclass=abc.ABCMeta):
                     for prefix in self.test_prefixes]
         label_fns = [os.path.join(self.LABEL_DIR, "%s.%s" % (prefix, self.label_type))
                       for prefix in self.test_prefixes]
-        return feat_fns, label_fns
+        transl_fns = [os.path.join(self.TRANSL_DIR, "%s.%s" % (prefix, self.transl_type))
+                      for prefix in self.test_prefixes]
+        return feat_fns, label_fns, transl_fns
 
     def get_untranscribed_fns(self):
         feat_fns = [os.path.join(self.UNTRAN_FEAT_DIR, "%s.%s.npy" % (

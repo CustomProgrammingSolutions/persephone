@@ -399,6 +399,7 @@ class Corpus(corpus.AbstractCorpus):
     # probably completely change the test set.
     FEAT_DIR = FEAT_DIR
     LABEL_DIR = LABEL_DIR
+    TRANSL_DIR = TRANSL_DIR
     UNTRAN_FEAT_DIR = os.path.join(UNTRAN_DIR, "feat")
 
     def __init__(self,
@@ -418,6 +419,7 @@ class Corpus(corpus.AbstractCorpus):
 
         self.feat_type = feat_type
         self.label_type = label_type
+        self.transl_type = "fr.txt"
 
         train, valid, test = make_data_splits(train_rec_type=train_rec_type,
                                               max_samples=max_samples)

@@ -123,7 +123,7 @@ class Model:
 
         for i, log_softmax_example in enumerate(log_softmax):
             # Get utterance name from the batch
-            prefix = label_fn_prefix[i]
+            prefix = label_fn_prefixes[i]
             # Create a confusion network
             length = batch_x_lens[i]
             lattice.logsoftmax2confusion(log_softmax_example[:length],

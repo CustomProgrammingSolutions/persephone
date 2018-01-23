@@ -268,6 +268,11 @@ def prepare_labels(label_type):
     if not os.path.exists(os.path.join(LABEL_DIR, "WORDLIST")):
         os.makedirs(os.path.join(LABEL_DIR, "WORDLIST"))
 
+    total_text = 0
+    total_wordlist = 0
+    tgm_end_text = 0
+    tgm_end_wordlist = 0
+
     for fn in os.listdir(ORG_XML_DIR):
         print(fn)
         path = os.path.join(ORG_XML_DIR, fn)
@@ -276,14 +281,30 @@ def prepare_labels(label_type):
         rec_type, sents, times, transls = datasets.pangloss.get_sents_times_and_translations(path)
         # Write the sentence transcriptions to file
         sents = [preprocess_na(sent, label_type) for sent in sents]
+
         for i, sent in enumerate(sents):
             if sent.strip() == "":
                 # Then there's no transcription, so ignore this.
                 continue
             out_fn = "%s.%d.%s" % (prefix, i, label_type)
             sent_path = os.path.join(LABEL_DIR, rec_type, out_fn)
-            with open(sent_path, "w") as sent_f:
-                print(sent, file=sent_f)
+            #with open(sent_path, "w") as sent_f:
+            #    print(sent, file=sent_f)
+            print(sent)
+            print(rec_type)
+            if rec_type == "TEXT":
+                total_text += 1
+                if sent.split()[-1] == "|":
+                    tgm_end_text += 1
+            if rec_type == "WORDLIST":
+                total_wordlist += 1
+                if sent.split()[-1] == "|":
+                    tgm_end_wordlist += 1
+
+    print(total_text)
+    print(tgm_end_text)
+    print(total_wordlist)
+    print(tgm_end_wordlist)
 
 # TODO Consider factoring out as non-Na specific.
 def prepare_untran(feat_type="fbank_and_pitch"):

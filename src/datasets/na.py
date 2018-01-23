@@ -16,7 +16,7 @@ import utils
 
 ORG_DIR = config.NA_DIR
 # TODO eventually remove "new" when ALTA experiments are finished.
-TGT_DIR = os.path.join(config.TGT_DIR, "na", "new")
+TGT_DIR = os.path.join(config.TGT_DIR, "na", "new", "tgm_append")
 ORG_XML_DIR = os.path.join(ORG_DIR, "xml")
 ORG_WAV_DIR = os.path.join(ORG_DIR, "wav")
 TGT_WAV_DIR = os.path.join(TGT_DIR, "wav")
@@ -83,6 +83,7 @@ def preprocess_na(sent, label_type):
     elif label_type == "phonemes":
         phonemes = True
         tones = False
+        tgm = False
     elif label_type == "tones":
         phonemes = False
         tones = True
@@ -181,6 +182,9 @@ def preprocess_na(sent, label_type):
             if phoneme != " ":
                 filtered_sentence.append(phoneme)
         filtered_sentence = [item for item in filtered_sentence if item != None]
+        if tgm:
+            if filtered_sentence[-1] != "|":
+                filtered_sentence.append("|")
         return " ".join(filtered_sentence)
 
     # Filter utterances with certain words
@@ -268,11 +272,6 @@ def prepare_labels(label_type):
     if not os.path.exists(os.path.join(LABEL_DIR, "WORDLIST")):
         os.makedirs(os.path.join(LABEL_DIR, "WORDLIST"))
 
-    total_text = 0
-    total_wordlist = 0
-    tgm_end_text = 0
-    tgm_end_wordlist = 0
-
     for fn in os.listdir(ORG_XML_DIR):
         print(fn)
         path = os.path.join(ORG_XML_DIR, fn)
@@ -288,23 +287,8 @@ def prepare_labels(label_type):
                 continue
             out_fn = "%s.%d.%s" % (prefix, i, label_type)
             sent_path = os.path.join(LABEL_DIR, rec_type, out_fn)
-            #with open(sent_path, "w") as sent_f:
-            #    print(sent, file=sent_f)
-            print(sent)
-            print(rec_type)
-            if rec_type == "TEXT":
-                total_text += 1
-                if sent.split()[-1] == "|":
-                    tgm_end_text += 1
-            if rec_type == "WORDLIST":
-                total_wordlist += 1
-                if sent.split()[-1] == "|":
-                    tgm_end_wordlist += 1
-
-    print(total_text)
-    print(tgm_end_text)
-    print(total_wordlist)
-    print(tgm_end_wordlist)
+            with open(sent_path, "w") as sent_f:
+                print(sent, file=sent_f)
 
 # TODO Consider factoring out as non-Na specific.
 def prepare_untran(feat_type="fbank_and_pitch"):

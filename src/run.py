@@ -76,7 +76,14 @@ def run():
         raise DirtyRepoException("Changes to the index or working tree."
                                  "Commit them first .")
     exp_dir = prep_exp_dir()
-    scaling_graph_full(exp_dir)
+
+    num_runs = 3
+    feat_type = "fbank_and_pitch"
+    label_type = "phonemes_and_tones"
+    for train_rec_type in ["text_and_wordlist", "text"]:
+        for i in range(num_runs):
+            train(exp_dir, "na", feat_type, label_type, 3, 250,
+                  train_rec_type=train_rec_type)
 
 def scaling_graph_full(exp_dir):
 

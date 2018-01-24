@@ -350,3 +350,70 @@ def chatino_tone_confusion(exp_path):
             print("%0.3f," % (d[(ref, hyp)]*100/total[ref]), end="")
         print("%0.3f\\\\" % (d[(ref, nonzero_tones[-1])]*100/total[ref]))
 
+def tone_rule_observance(exp_num):
+
+    def na_tone_rule6_instance(toks):
+        """ Searches for instances where Rule 6 should be applied. """
+
+        def get_next_tone(i):
+            """
+            Finds the next tone after the token at index i. If the tone
+            group ends before the next tone, None is returned.
+            """
+
+            j = i
+            for tok in toks[i+1:]:
+                j += 1
+                if tok in datasets.na.TONES:
+                    return j, tok
+                if tok == "|":
+                    # Then there is no next tone in the tone group
+                    return j, None
+
+            # Then we're at the end of the tuterance
+            return None, None
+
+        instances = []
+        for i, tok in enumerate(toks):
+            if tok == "˩":
+                j, next_tone = get_next_tone(i)
+                if next_tone in ["˧", "˥"]:
+                    if j+1 < len(toks) and toks[j+1] == "|":
+                        instances.append(toks[i:j+2])
+
+        return instances
+
+
+    refs_path = os.path.join(config.EXP_DIR, str(exp_num), "decoded", "refs")
+    #hyps_path = os.path.join(config.EXP_DIR, str(exp_num), "test", "hyps")
+
+    with open(refs_path) as f:
+        refs = f.readlines()
+    #with open(hyps_path) as f:
+    #    hyps = f.readlines()
+
+    with open("../data/na/new/valid_prefixes.txt") as f:
+        prefixes = f.readlines()
+
+    with open("rule6_broken_cases.txt", "w") as f:
+        num_instances = 0
+        count_m = 0
+        count_h = 0
+        for ref, prefix in zip(refs, prefixes):
+            sp = prefix.strip().split(".")
+            instances = na_tone_rule6_instance(ref.split())
+            for instance in instances:
+                num_instances += 1
+                if instance[-2] == "˧":
+                    count_m += 1
+                    print(sp[0], int(sp[1])+1, file=f)
+                    print("".join(ref.strip().split()), file=f)
+                    print("\t", "".join(instance), file=f)
+                    print("", file=f)
+                elif instance[-2] == "˥":
+                    count_h += 1
+
+
+        print(num_instances, count_m, count_h)
+
+

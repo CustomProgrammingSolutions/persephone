@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Changed
 - Update package dependencies versions.
+- Python 3.7 compatibility
 
 ### Fixed
 - `CorpusReader.train_batch_gen` raises StopIteration instead of returning None if no data can be generated.
